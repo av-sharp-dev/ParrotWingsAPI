@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
-using System.Runtime.CompilerServices;
 
 namespace ParrotWingsAPI.Controllers
 {
@@ -15,16 +14,7 @@ namespace ParrotWingsAPI.Controllers
         public UsersController(ApiContext context)
         {
             _context= context;
-
-            //DB users preset
-            try
-            {
-                _context.UsersTable.Add(new PWUsers("Bill Gates", "Bgates@gmail.com", "preset", 700.00m));
-                _context.UsersTable.Add(new PWUsers("Jeff Bezos", "Bezos@gmail.com", "preset", 900.00m));
-                _context.UsersTable.Add(new PWUsers("Vasily Lucky", "Vasya@gmail.com", "preset", 500.00m));
-                _context.SaveChanges();
-            }
-            catch { }
+            ApiContext.createDBPreset(_context); //creating debugging DB data preset
         }
 
         //Create User
@@ -37,10 +27,10 @@ namespace ParrotWingsAPI.Controllers
             }
             else
             {
-                var userInDb = _context.UsersTable.Find(user.Name);
+                var userInDb = _context.UsersTable.Find(user.Email);
                 if (userInDb != null)
                 {
-                    return new JsonResult(NotFound("Error: username " + user.Name + " alredy exists"));
+                    return new JsonResult(NotFound("Error: user alredy registered"));
                 }
                 else
                 {
