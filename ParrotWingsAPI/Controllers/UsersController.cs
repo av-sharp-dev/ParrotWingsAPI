@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
+using System.Runtime.CompilerServices;
 
 namespace ParrotWingsAPI.Controllers
 {
@@ -14,6 +15,16 @@ namespace ParrotWingsAPI.Controllers
         public UsersController(ApiContext context)
         {
             _context= context;
+
+            //DB users preset
+            try
+            {
+                _context.UsersTable.Add(new PWUsers("Bill Gates", "Bgates@gmail.com", "preset", 700.00m));
+                _context.UsersTable.Add(new PWUsers("Jeff Bezos", "Bezos@gmail.com", "preset", 900.00m));
+                _context.UsersTable.Add(new PWUsers("Vasily Lucky", "Vasya@gmail.com", "preset", 500.00m));
+                _context.SaveChanges();
+            }
+            catch { }
         }
 
         //Create User
