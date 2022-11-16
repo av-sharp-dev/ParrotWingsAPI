@@ -39,13 +39,14 @@ namespace ParrotWingsAPI.Controllers
                 Email = userInput.Email,
                 Name = userInput.Name,
                 PasswordHash = passwordHash,
-                PasswordSalt = passwordSalt
+                PasswordSalt = passwordSalt,
+                Balance = 500
             };
 
             _context.UserAccs.Add(newUser);
             _context.SaveChanges();
 
-            return new JsonResult(Ok("Success: " + newUser.Name + " successfully registered"));
+            return new JsonResult(Ok("Success: " + newUser.Name + " successfully registered and awarded with 500 starting PW balance"));
         }
 
         [HttpPost]
