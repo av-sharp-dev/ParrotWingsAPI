@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
@@ -14,7 +15,6 @@ namespace ParrotWingsAPI.Controllers
         public TransactionsController(ApiContext context)
         {
             _context = context;
-            ApiContext.createDBPreset(_context); //creating debugging DB data preset
         }
 
         //Make a transaction
@@ -26,8 +26,8 @@ namespace ParrotWingsAPI.Controllers
                 return new JsonResult(NotFound("Error: sender and recipient name are required. Payment amount should be larger than 0"));
             }else
             {
-                var senderInDb = _context.UsersTable.Find(transaction.SenderEmail);
-                var recipientInDb = _context.UsersTable.Find(transaction.RecipientEmail);
+                var senderInDb = _context.UserAccs.Find(transaction.SenderEmail);
+                var recipientInDb = _context.UserAccs.Find(transaction.RecipientEmail);
 
                 if (senderInDb == null)
                     return new JsonResult(NotFound("Error: sender not found"));
@@ -50,7 +50,7 @@ namespace ParrotWingsAPI.Controllers
         }
 
         //Get All Transactions
-        [HttpGet]
+        [HttpGet, Authorize]
         public JsonResult GetAllTransactions()
         {
             var transactionsInDb = _context.TransactionsTable.ToList();

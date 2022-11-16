@@ -6,7 +6,7 @@ namespace ParrotWingsAPI.Models
     public class PWTransactions
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        //[DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public string SenderEmail { get; set; }
         public string RecipientEmail { get; set; }
