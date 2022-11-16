@@ -28,30 +28,25 @@ namespace ParrotWingsAPI.Controllers
         [HttpPost]
         public JsonResult CreateUser(PWUsersRegister userInput)
         {
-            //input checks
-                var userInDb = _context.UserAccs.Find(userInput.Email);
-                if (userInDb != null)
-                    return new JsonResult(NotFound("Error: user with this email already registered"));
+            var userInDb = _context.UserAccs.Find(userInput.Email);
+                
+            if (userInDb != null)
+                return new JsonResult(NotFound("Error: user with this email already registered"));
 
-                //email format is correct (@ and .)
-                //name is not full (first name and second name are required)
+            CreatePasswordHash(userInput.Password, out byte[] passwordHash, out byte[] passwordSalt);
             
-            //creating hash & salt
-                CreatePasswordHash(userInput.Password, out byte[] passwordHash, out byte[] passwordSalt);
-            
-            //writing in DB
-                var newUser = new PWUsers
-                {
-                    Email = userInput.Email,
-                    Name = userInput.Name,
-                    PasswordHash = passwordHash,
-                    PasswordSalt = passwordSalt
-                };
+            var newUser = new PWUsers
+            {
+                Email = userInput.Email,
+                Name = userInput.Name,
+                PasswordHash = passwordHash,
+                PasswordSalt = passwordSalt
+            };
 
-                _context.UserAccs.Add(newUser);
-                _context.SaveChanges();
+            _context.UserAccs.Add(newUser);
+            _context.SaveChanges();
 
-            return new JsonResult(Ok(newUser));
+            return new JsonResult(Ok("Success: " + newUser.Name + " successfully registered"));
         }
 
         [HttpPost]
