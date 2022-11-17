@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 
@@ -13,6 +16,7 @@ namespace ParrotWingsAPI.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
+
     public class UsersController : ControllerBase
     {
         private readonly ApiContext _context;
@@ -64,7 +68,28 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok(token));
         }
 
-        //Get All Users
+        [HttpGet, Authorize]
+        public JsonResult GetUserName()
+        {
+            var userInDb = _context.UserAccs.Find(CurrentUserEmail());
+            
+            if (userInDb == null)
+                return new JsonResult(NotFound("Error: internal server error. User data not found"));
+            
+            return new JsonResult (Ok(userInDb.Name));
+        }
+
+        [HttpGet, Authorize]
+        public JsonResult GetUserBalance()
+        {
+            var userInDb = _context.UserAccs.Find(CurrentUserEmail());
+
+            if (userInDb == null)
+                return new JsonResult(NotFound("Error: internal server error. User data not found"));
+
+            return new JsonResult(Ok(userInDb.Balance));
+        }
+
         [HttpGet, Authorize]
         public JsonResult GetAllUsers()
         {
@@ -72,11 +97,16 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok(usersInDb));
         }
 
+        private string CurrentUserEmail()
+        {
+            return User.FindFirstValue(ClaimTypes.Email);
+        }
+
         private string CreateToken(PWUsers user)
         {
             List<Claim> claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name, user.Name)
+                new Claim(ClaimTypes.Name, user.Email)
             };
 
             var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:Token").Value));
