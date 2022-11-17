@@ -31,7 +31,7 @@ namespace ParrotWingsAPI.Controllers
         [HttpPost]
         public JsonResult Registration(PWUsersRegisteration userInput)
         {
-            var userInDb = _context.UserAccs.Find(userInput.Email);
+            var userInDb = _context.UserAccs.Find(userInput.Email.ToLower());
                 
             if (userInDb != null)
                 return new JsonResult(NotFound("Error: user with this email already registered"));
@@ -40,7 +40,7 @@ namespace ParrotWingsAPI.Controllers
             
             var newUser = new PWUsers
             {
-                Email = userInput.Email,
+                Email = userInput.Email.ToLower(),
                 Name = userInput.Name,
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
