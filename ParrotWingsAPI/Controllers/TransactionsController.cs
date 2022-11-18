@@ -8,6 +8,7 @@ namespace ParrotWingsAPI.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
+    [Authorize]
     public class TransactionsController : ControllerBase
     {
         private readonly ApiContext _context;
@@ -16,7 +17,7 @@ namespace ParrotWingsAPI.Controllers
             _context = context;
         }
 
-        [HttpPost, Authorize]
+        [HttpPost]
         public JsonResult Pay(PWTransactions transactionInput)
         {
             var senderInDb = getCurrentUserFromDB();
@@ -59,7 +60,7 @@ namespace ParrotWingsAPI.Controllers
         }
         
         //provided the recipient list based on user input (first letters)
-        [HttpGet, Authorize]
+        [HttpGet]
         public JsonResult GetRecipientsByQuerying(string firstLetters)
         {
             var userInDb = getCurrentUserFromDB();
@@ -80,7 +81,7 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok(recipients));
         }
 
-        [HttpGet, Authorize]
+        [HttpGet]
         public JsonResult GetUserTransactionHistory()
         {
             var userInDb = getCurrentUserFromDB();

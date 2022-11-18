@@ -11,7 +11,7 @@ namespace ParrotWingsAPI.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
-
+    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly ApiContext _context;
@@ -23,7 +23,7 @@ namespace ParrotWingsAPI.Controllers
             _configuration= configuration;
         }
 
-        [HttpPost]
+        [HttpPost, AllowAnonymous]
         public JsonResult Registration(PWUsersRegisteration userInput)
         {
             var userInDb = _context.UserAccs.Find(userInput.Email.ToLower());
@@ -48,7 +48,7 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok("Success: " + newUser.Name + " successfully registered and awarded with 500 starting PW balance"));
         }
 
-        [HttpPost]
+        [HttpPost, AllowAnonymous]
         public JsonResult Login(PWUsersLogin userInput)
         {
             var userInDb = _context.UserAccs.Find(userInput.Email.ToLower());
@@ -67,7 +67,7 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok(token));
         }
 
-        [HttpPost, Authorize]
+        [HttpPost]
         public JsonResult Logout()
         {
             var userInDb = getCurrentUserFromDB();
@@ -81,7 +81,7 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok("Success: logged out"));
         }
 
-        [HttpGet, Authorize]
+        [HttpGet]
         public JsonResult GetCurrentUserName()
         {
             var userInDb = getCurrentUserFromDB();
@@ -95,7 +95,7 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok(userInDb.Name));
         }
 
-        [HttpGet, Authorize]
+        [HttpGet]
         public JsonResult GetCurrentUserBalance()
         {
             var userInDb = getCurrentUserFromDB();
