@@ -1,14 +1,9 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 
@@ -56,7 +51,7 @@ namespace ParrotWingsAPI.Controllers
         [HttpPost]
         public JsonResult Login(PWUsersLogin userInput)
         {
-            var userInDb = _context.UserAccs.Find(userInput.Email);
+            var userInDb = _context.UserAccs.Find(userInput.Email.ToLower());
 
             if (userInDb == null)
                 return new JsonResult(BadRequest("Error: user not found"));
