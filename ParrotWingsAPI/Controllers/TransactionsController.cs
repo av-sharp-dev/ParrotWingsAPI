@@ -16,43 +16,91 @@ namespace ParrotWingsAPI.Controllers
             _context = context;
         }
 
-        //Make a transaction
-        [HttpPost]
-        public JsonResult Pay(PWTransactions transaction)
+        [HttpPost, Authorize]
+        public JsonResult Pay(PWTransactions transactionInput)
         {
-            if (transaction.SenderEmail == "" || transaction.RecipientEmail == "" || transaction.Id != 0 || transaction.Amount <= 0)
+            var senderInDb = getCurrentUserFromDB();
+
+            if (senderInDb.IsLoggedIn == false)
+                return new JsonResult(Unauthorized("Error: login required"));
+
+            var recipientEmail = _context.UserAccs.Where(e => e.Name == transactionInput.RecipientName).FirstOrDefault();
+
+            if (recipientEmail == null)
+                return new JsonResult(BadRequest("Error: recipient " + transactionInput.RecipientName + " not found"));
+
+            var recipientInDb = _context.UserAccs.Find(recipientEmail.Email);
+
+            if (transactionInput.Amount <= 0)
+                return new JsonResult(BadRequest("Error: PW amount should be greater than 0"));
+
+            if (senderInDb.Balance < transactionInput.Amount)
+                return new JsonResult(BadRequest("Error:  not enough PW to remit the transaction"));
+
+            PWTransactionsHistory transaction = new PWTransactionsHistory()
             {
-                return new JsonResult(NotFound("Error: sender and recipient name are required. Payment amount should be larger than 0"));
-            }else
-            {
-                var senderInDb = _context.UserAccs.Find(transaction.SenderEmail);
-                var recipientInDb = _context.UserAccs.Find(transaction.RecipientEmail);
+                SenderEmail = senderInDb.Email,
+                RecipientEmail = recipientInDb.Email,
+                RecipientName = recipientInDb.Name,
+                ResultingBalance = senderInDb.Balance - transactionInput.Amount,
+                Amount = transactionInput.Amount,
+                TransactionDate = DateTime.UtcNow
+            };
 
-                if (senderInDb == null)
-                    return new JsonResult(NotFound("Error: sender not found"));
-                if (recipientInDb == null)
-                    return new JsonResult(NotFound("Error: recipient not found"));
-                if (senderInDb.Balance < transaction.Amount)
-                    return new JsonResult(NotFound("Error: not enough PW to remit the transaction"));
-
-                senderInDb.Balance -= transaction.Amount;
-                recipientInDb.Balance += transaction.Amount;
-
-                var lastId = _context.TransactionsTable.Last().Id;
-                transaction.Id = ++lastId;
-
-                _context.TransactionsTable.Add(transaction);
-                _context.SaveChanges();
+            _context.TransactionsTable.Add(transaction);
+            senderInDb.Balance -= transactionInput.Amount;
+            recipientInDb.Balance += transactionInput.Amount;
+            _context.SaveChanges();
 
             return new JsonResult(Ok("Success: PW sended"));
-            }
+        }
+        
+        //provided the recipient list based on user input (first letters)
+        [HttpGet, Authorize]
+        public JsonResult GetRecipientsByQuerying(string firstLetters)
+        {
+            var userInDb = getCurrentUserFromDB();
+
+            if (userInDb.IsLoggedIn == false)
+                return new JsonResult(Unauthorized("Error: login required"));
+
+            if (firstLetters == null)
+                return new JsonResult(BadRequest("Error: 1 letter at least"));
+
+            var recipients = _context.UserAccs.Where(r => r.Name.StartsWith(firstLetters))
+                .Select(s => new { Name = s.Name})
+                .ToList();
+
+            if (recipients.Count == 0)
+                return new JsonResult(NotFound("Users not found. Try upper/lower case"));
+
+            return new JsonResult(Ok(recipients));
         }
 
         [HttpGet, Authorize]
         public JsonResult GetUserTransactionHistory()
         {
-            var transactionsInDb = _context.TransactionsTable.ToList();
-            return new JsonResult(Ok(transactionsInDb));
+            var userInDb = getCurrentUserFromDB();
+
+            if (userInDb.IsLoggedIn == false)
+                return new JsonResult(Unauthorized("Error: login required"));
+
+            var transactionHistory = _context.TransactionsTable.Where(w => w.SenderEmail == userInDb.Email)
+                .Select(x => new { Date = x.TransactionDate, Recipient = x.RecipientName, Amount = x.Amount, Balance = x.ResultingBalance })
+                .OrderByDescending(x => x.Date)
+                .ToList();
+
+            if (transactionHistory.Count == 0)
+                return new JsonResult(NotFound("Transactions not found"));
+
+            return new JsonResult(Ok(transactionHistory));
+        }
+
+        private PWUsers getCurrentUserFromDB()
+        {
+            var userIdentity = User.FindFirstValue(ClaimTypes.Email);
+            var userInDb = _context.UserAccs.Find(userIdentity);
+            return userInDb;
         }
     }
 }
