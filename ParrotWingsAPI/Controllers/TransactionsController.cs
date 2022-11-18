@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
+using System.Security.Claims;
 
 namespace ParrotWingsAPI.Controllers
 {
@@ -11,7 +11,6 @@ namespace ParrotWingsAPI.Controllers
     public class TransactionsController : ControllerBase
     {
         private readonly ApiContext _context;
-
         public TransactionsController(ApiContext context)
         {
             _context = context;
@@ -45,13 +44,12 @@ namespace ParrotWingsAPI.Controllers
                 _context.TransactionsTable.Add(transaction);
                 _context.SaveChanges();
 
-                return new JsonResult(Ok("Success: money sended"));
+            return new JsonResult(Ok("Success: PW sended"));
             }
         }
 
-        //Get All Transactions
         [HttpGet, Authorize]
-        public JsonResult GetAllTransactions()
+        public JsonResult GetUserTransactionHistory()
         {
             var transactionsInDb = _context.TransactionsTable.ToList();
             return new JsonResult(Ok(transactionsInDb));
