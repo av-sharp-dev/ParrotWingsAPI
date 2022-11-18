@@ -31,6 +31,9 @@ namespace ParrotWingsAPI.Controllers
 
             var recipientInDb = _context.UserAccs.Find(recipientEmail.Email);
 
+            if (senderInDb.Email == recipientInDb.Email)
+                return new JsonResult(BadRequest("Error: you can't make yourself happy by transfering money to yourself"));
+
             if (transactionInput.Amount <= 0)
                 return new JsonResult(BadRequest("Error: PW amount should be greater than 0"));
 
