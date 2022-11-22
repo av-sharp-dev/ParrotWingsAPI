@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using ParrotWingsAPI.Data;
+using ParrotWingsAPI.Models;
+using ParrotWingsAPI.Services.PasswordServices;
+using ParrotWingsAPI.Services.TokenGenerators;
 using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 
@@ -10,10 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 string CORSpolicy = "CORSpolicy";
 
 // Add services to the container.
+builder.Services.AddSingleton<AccessTokenGenerator>();
+builder.Services.AddSingleton<PasswordServices>();
 builder.Services.AddDbContext<ApiContext>
     (opt => opt.UseInMemoryDatabase("ParrotWingsDb"));
-
+builder.Services.AddMvc();
 builder.Services.AddControllers();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -30,12 +36,14 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.RequireHttpsMetadata = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey= true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetSection("AppSettings:AccessTokenSecret").Value)),
             ValidateIssuer = false,
             ValidateAudience = false,
+            ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero //invalidate JWT exactly when it's expired and with no delay
         };
     });
