@@ -16,6 +16,7 @@ namespace ParrotWingsAPI.Controllers
     {
         private readonly ApiContext _context;
         private readonly IConfiguration _configuration;
+        private readonly decimal PWRegisterRewardAmnt = 500;
 
         public UsersController(ApiContext context, IConfiguration configuration)
         {
@@ -39,7 +40,7 @@ namespace ParrotWingsAPI.Controllers
                 Name = userInput.Name,
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
-                Balance = 500
+                Balance = PWRegisterRewardAmnt
             };
 
             await _context.UserAccs.AddAsync(newUser);
