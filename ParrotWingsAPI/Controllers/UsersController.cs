@@ -1,11 +1,18 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.IdentityModel.Tokens;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
+using ParrotWingsAPI.Models.Requests;
+using ParrotWingsAPI.Models.Responses;
+using ParrotWingsAPI.Services.TokenGenerators;
+using ParrotWingsAPI.Services.PasswordServices;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace ParrotWingsAPI.Controllers
 {
@@ -16,12 +23,14 @@ namespace ParrotWingsAPI.Controllers
     {
         private readonly ApiContext _context;
         private readonly IConfiguration _configuration;
+        private readonly PasswordServices _passwordServices;
         private readonly decimal PWRegisterRewardAmnt = 500;
 
-        public UsersController(ApiContext context, IConfiguration configuration)
+        public UsersController(ApiContext context, IConfiguration configuration, AccessTokenGenerator accessTokenGenerator, PasswordServices passwordServices)
         {
             _context= context;
             _configuration= configuration;
+            _passwordServices = passwordServices;
         }
 
         [HttpPost, AllowAnonymous]
@@ -32,7 +41,7 @@ namespace ParrotWingsAPI.Controllers
             if (userInDb != null)
                 return new JsonResult(NotFound("Error: user with this email already registered"));
 
-            CreatePasswordHash(userInput.Password, out byte[] passwordHash, out byte[] passwordSalt);
+            _passwordServices.CreatePasswordHash(userInput.Password, out byte[] passwordHash, out byte[] passwordSalt);
             
             var newUser = new PWUsers
             {
@@ -57,7 +66,7 @@ namespace ParrotWingsAPI.Controllers
             if (userInDb == null)
                 return new JsonResult(BadRequest("Error: user not found"));
 
-            if (!VerifyPasswordHash(userInput.Password, userInDb.PasswordHash, userInDb.PasswordSalt))
+            if (!_passwordServices.VerifyPasswordHash(userInput.Password, userInDb.PasswordHash, userInDb.PasswordSalt))
                 return new JsonResult(BadRequest("Error: wrong password"));
 
             string token = CreateToken(userInDb);
@@ -65,7 +74,7 @@ namespace ParrotWingsAPI.Controllers
             userInDb.IsLoggedIn = true;
             await _context.SaveChangesAsync();
 
-            return new JsonResult(Ok(token));
+            return new JsonResult(Ok(new AuthenticatedUserResponse()
         }
 
         [HttpPost]
@@ -115,42 +124,6 @@ namespace ParrotWingsAPI.Controllers
             var userIdentity = User.FindFirstValue(ClaimTypes.Email);
             var userInDb = await _context.UserAccs.FindAsync(userIdentity);
             return userInDb;
-        }
-
-        private string CreateToken(PWUsers user)
-        {
-            List<Claim> claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Email, user.Email)
-            };
-
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:Token").Value));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-            var token = new JwtSecurityToken(
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(1),
-                signingCredentials: creds);
-            var jsonWebToken = new JwtSecurityTokenHandler().WriteToken(token);
-
-            return jsonWebToken;
-        }
-
-        private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
-        {
-            using (var hmac = new HMACSHA512())
-            {
-                passwordSalt = hmac.Key;
-                passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-            }
-        }
-
-        private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
-        {
-            using var hmac = new HMACSHA512(passwordSalt);
-            {
-                var computeHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-                return computeHash.SequenceEqual(passwordHash);
-            }
         }
     }
 }
