@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ParrotWingsAPI.Models
+namespace ParrotWingsAPI.Models.Requests
 {
     public class PWUsersLogin
     {

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ParrotWingsAPI.Models
+namespace ParrotWingsAPI.Models.Requests
 {
     public class PWUsersRegisteration
     {
@@ -14,7 +14,7 @@ namespace ParrotWingsAPI.Models
         [StringLength(40, ErrorMessage = "No more than 40 characters")]
         [RegularExpression("[a-zA-Z\\s]+$", ErrorMessage = "Incorrect name format. Enter first and last name")]
         public string Name { get; set; }
-        
+
         [Required(ErrorMessage = "Password is required")]
         [StringLength(30, ErrorMessage = "No more than 30 characters")]
         [DataType(DataType.Password)]

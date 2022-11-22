@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ParrotWingsAPI.Models
+namespace ParrotWingsAPI.Models.Requests
 {
     public class PWTransactions
     {
