@@ -7,6 +7,7 @@ using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+string CORSpolicy = "CORSpolicy";
 
 // Add services to the container.
 builder.Services.AddDbContext<ApiContext>
@@ -38,6 +39,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.Zero //invalidate JWT exactly when it's expired and with no delay
         };
     });
+builder.Services.AddCors(options =>
+    {
+        options.AddPolicy(CORSpolicy, builder =>
+        {
+            builder.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader(); //for now there are enabled acces from any origin to any methods and headers
+        });
+    });
 
 var app = builder.Build();
 
@@ -47,6 +57,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors(CORSpolicy);
 
 app.UseHttpsRedirection();
 
