@@ -24,9 +24,9 @@ namespace ParrotWingsAPI.Controllers
         }
 
         [HttpPost, AllowAnonymous]
-        public JsonResult Registration(PWUsersRegisteration userInput)
+        public async Task<JsonResult> Registration(PWUsersRegisteration userInput)
         {
-            var userInDb = _context.UserAccs.Find(userInput.Email.ToLower());
+            var userInDb = await _context.UserAccs.FindAsync(userInput.Email.ToLower());
                 
             if (userInDb != null)
                 return new JsonResult(NotFound("Error: user with this email already registered"));
@@ -42,16 +42,16 @@ namespace ParrotWingsAPI.Controllers
                 Balance = 500
             };
 
-            _context.UserAccs.Add(newUser);
-            _context.SaveChanges();
+            await _context.UserAccs.AddAsync(newUser);
+            await _context.SaveChangesAsync();
 
             return new JsonResult(Ok("Success: " + newUser.Name + " successfully registered and awarded with 500 starting PW balance"));
         }
 
         [HttpPost, AllowAnonymous]
-        public JsonResult Login(PWUsersLogin userInput)
+        public async Task<JsonResult> Login(PWUsersLogin userInput)
         {
-            var userInDb = _context.UserAccs.Find(userInput.Email.ToLower());
+            var userInDb = await _context.UserAccs.FindAsync(userInput.Email.ToLower());
 
             if (userInDb == null)
                 return new JsonResult(BadRequest("Error: user not found"));
@@ -62,29 +62,29 @@ namespace ParrotWingsAPI.Controllers
             string token = CreateToken(userInDb);
 
             userInDb.IsLoggedIn = true;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return new JsonResult(Ok(token));
         }
 
         [HttpPost]
-        public JsonResult Logout()
+        public async Task<JsonResult> Logout()
         {
-            var userInDb = getCurrentUserFromDB();
+            var userInDb = await getCurrentUserFromDB();
 
             if (userInDb.IsLoggedIn == false)
                 return new JsonResult(BadRequest("Error: already logged out"));
 
             userInDb.IsLoggedIn = false;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return new JsonResult(Ok("Success: logged out"));
         }
 
         [HttpGet]
-        public JsonResult GetCurrentUserName()
+        public async Task<JsonResult> GetCurrentUserName()
         {
-            var userInDb = getCurrentUserFromDB();
+            var userInDb = await getCurrentUserFromDB();
 
             if (userInDb == null)
                 return new JsonResult(NotFound("Error: internal server error. User data not found"));
@@ -96,9 +96,9 @@ namespace ParrotWingsAPI.Controllers
         }
 
         [HttpGet]
-        public JsonResult GetCurrentUserBalance()
+        public async Task<JsonResult> GetCurrentUserBalance()
         {
-            var userInDb = getCurrentUserFromDB();
+            var userInDb = await getCurrentUserFromDB();
 
             if (userInDb == null)
                 return new JsonResult(NotFound("Error: internal server error. User data not found"));
@@ -109,10 +109,10 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok(userInDb.Balance));
         }
 
-        private PWUsers getCurrentUserFromDB()
+        private async Task<PWUsers> getCurrentUserFromDB()
         {
             var userIdentity = User.FindFirstValue(ClaimTypes.Email);
-            var userInDb = _context.UserAccs.Find(userIdentity);
+            var userInDb = await _context.UserAccs.FindAsync(userIdentity);
             return userInDb;
         }
 

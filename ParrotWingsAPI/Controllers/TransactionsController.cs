@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
 using System.Security.Claims;
@@ -18,19 +19,19 @@ namespace ParrotWingsAPI.Controllers
         }
 
         [HttpPost]
-        public JsonResult Pay(PWTransactions transactionInput)
+        public async Task<JsonResult> Pay(PWTransactions transactionInput)
         {
-            var senderInDb = getCurrentUserFromDB();
+            var senderInDb = await getCurrentUserFromDB();
 
             if (senderInDb.IsLoggedIn == false)
                 return new JsonResult(Unauthorized("Error: login required"));
 
-            var recipientEmail = _context.UserAccs.Where(e => e.Name == transactionInput.RecipientName).FirstOrDefault();
+            var recipientEmail = await _context.UserAccs.Where(e => e.Name == transactionInput.RecipientName).FirstOrDefaultAsync();
 
             if (recipientEmail == null)
                 return new JsonResult(BadRequest("Error: recipient " + transactionInput.RecipientName + " not found"));
 
-            var recipientInDb = _context.UserAccs.Find(recipientEmail.Email);
+            var recipientInDb = await _context.UserAccs.FindAsync(recipientEmail.Email);
 
             if (senderInDb.Email == recipientInDb.Email)
                 return new JsonResult(BadRequest("Error: making yourself happy by transfering money to yourself is not allowed"));
@@ -51,19 +52,19 @@ namespace ParrotWingsAPI.Controllers
                 TransactionDate = DateTime.UtcNow
             };
 
-            _context.TransactionsTable.Add(transaction);
+            await _context.TransactionsTable.AddAsync(transaction);
             senderInDb.Balance -= transactionInput.Amount;
             recipientInDb.Balance += transactionInput.Amount;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return new JsonResult(Ok("Success: PW sended"));
         }
         
         //provided the recipient list based on user input (first letters)
         [HttpGet]
-        public JsonResult GetRecipientsByQuerying(string firstLetters)
+        public async Task <JsonResult> GetRecipientsByQueryingAsync(string firstLetters)
         {
-            var userInDb = getCurrentUserFromDB();
+            var userInDb = await getCurrentUserFromDB();
 
             if (userInDb.IsLoggedIn == false)
                 return new JsonResult(Unauthorized("Error: login required"));
@@ -71,9 +72,9 @@ namespace ParrotWingsAPI.Controllers
             if (firstLetters == null)
                 return new JsonResult(BadRequest("Error: 1 letter at least"));
 
-            var recipients = _context.UserAccs.Where(r => r.Name.StartsWith(firstLetters))
+            var recipients = await _context.UserAccs.Where(r => r.Name.StartsWith(firstLetters))
                 .Select(s => new { Name = s.Name})
-                .ToList();
+                .ToListAsync();
 
             if (recipients.Count == 0)
                 return new JsonResult(NotFound("Users not found. Try upper/lower case"));
@@ -82,17 +83,17 @@ namespace ParrotWingsAPI.Controllers
         }
 
         [HttpGet]
-        public JsonResult GetUserTransactionHistory()
+        public async Task<JsonResult> GetUserTransactionHistoryAsync()
         {
-            var userInDb = getCurrentUserFromDB();
+            var userInDb = await getCurrentUserFromDB();
 
             if (userInDb.IsLoggedIn == false)
                 return new JsonResult(Unauthorized("Error: login required"));
 
-            var transactionHistory = _context.TransactionsTable.Where(w => w.SenderEmail == userInDb.Email)
+            var transactionHistory = await _context.TransactionsTable.Where(w => w.SenderEmail == userInDb.Email)
                 .Select(x => new { Date = x.TransactionDate, Recipient = x.RecipientName, Amount = x.Amount, Balance = x.ResultingBalance })
                 .OrderByDescending(x => x.Date)
-                .ToList();
+                .ToListAsync();
 
             if (transactionHistory.Count == 0)
                 return new JsonResult(NotFound("Transactions not found"));
@@ -100,10 +101,10 @@ namespace ParrotWingsAPI.Controllers
             return new JsonResult(Ok(transactionHistory));
         }
 
-        private PWUsers getCurrentUserFromDB()
+        private async Task<PWUsers> getCurrentUserFromDB()
         {
             var userIdentity = User.FindFirstValue(ClaimTypes.Email);
-            var userInDb = _context.UserAccs.Find(userIdentity);
+            var userInDb = await _context.UserAccs.FindAsync(userIdentity);
             return userInDb;
         }
     }
