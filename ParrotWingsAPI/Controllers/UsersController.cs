@@ -23,6 +23,7 @@ namespace ParrotWingsAPI.Controllers
     {
         private readonly ApiContext _context;
         private readonly IConfiguration _configuration;
+        private readonly AccessTokenGenerator _accessTokenGenerator;
         private readonly PasswordServices _passwordServices;
         private readonly decimal PWRegisterRewardAmnt = 500;
 
@@ -30,6 +31,7 @@ namespace ParrotWingsAPI.Controllers
         {
             _context= context;
             _configuration= configuration;
+            _accessTokenGenerator= accessTokenGenerator;
             _passwordServices = passwordServices;
         }
 
@@ -37,12 +39,12 @@ namespace ParrotWingsAPI.Controllers
         public async Task<JsonResult> Registration(PWUsersRegisteration userInput)
         {
             var userInDb = await _context.UserAccs.FindAsync(userInput.Email.ToLower());
-                
+
             if (userInDb != null)
                 return new JsonResult(NotFound("Error: user with this email already registered"));
 
             _passwordServices.CreatePasswordHash(userInput.Password, out byte[] passwordHash, out byte[] passwordSalt);
-            
+
             var newUser = new PWUsers
             {
                 Email = userInput.Email.ToLower(),
@@ -69,12 +71,15 @@ namespace ParrotWingsAPI.Controllers
             if (!_passwordServices.VerifyPasswordHash(userInput.Password, userInDb.PasswordHash, userInDb.PasswordSalt))
                 return new JsonResult(BadRequest("Error: wrong password"));
 
-            string token = CreateToken(userInDb);
 
+            string token = _accessTokenGenerator.GenerateToken(userInDb);
             userInDb.IsLoggedIn = true;
             await _context.SaveChangesAsync();
 
             return new JsonResult(Ok(new AuthenticatedUserResponse()
+            {
+                AccessToken= token
+            }));
         }
 
         [HttpPost]

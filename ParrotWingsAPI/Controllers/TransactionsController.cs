@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
+using ParrotWingsAPI.Models.Requests;
 using System.Security.Claims;
 
 namespace ParrotWingsAPI.Controllers
