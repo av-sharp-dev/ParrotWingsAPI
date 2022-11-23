@@ -20,12 +20,9 @@ namespace ParrotWingsAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<JsonResult> Pay(PWTransactions transactionInput)
+        public async Task<JsonResult> Pay(Transactions transactionInput)
         {
             var senderInDb = await getCurrentUserFromDB();
-
-            if (senderInDb.IsLoggedIn == false)
-                return new JsonResult(Unauthorized("Error: login required"));
 
             var recipientEmail = await _context.UserAccs.Where(e => e.Name == transactionInput.RecipientName).FirstOrDefaultAsync();
 
@@ -65,11 +62,6 @@ namespace ParrotWingsAPI.Controllers
         [HttpGet]
         public async Task <JsonResult> GetRecipientsByQueryingAsync(string firstLetters)
         {
-            var userInDb = await getCurrentUserFromDB();
-
-            if (userInDb.IsLoggedIn == false)
-                return new JsonResult(Unauthorized("Error: login required"));
-
             if (firstLetters == null)
                 return new JsonResult(BadRequest("Error: 1 letter at least"));
 
@@ -87,9 +79,6 @@ namespace ParrotWingsAPI.Controllers
         public async Task<JsonResult> GetUserTransactionHistoryAsync()
         {
             var userInDb = await getCurrentUserFromDB();
-
-            if (userInDb.IsLoggedIn == false)
-                return new JsonResult(Unauthorized("Error: login required"));
 
             var transactionHistory = await _context.TransactionsTable.Where(w => w.SenderEmail == userInDb.Email)
                 .Select(x => new { Date = x.TransactionDate, Recipient = x.RecipientName, Amount = x.Amount, Balance = x.ResultingBalance })

@@ -13,6 +13,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using ParrotWingsAPI.Services.TokenValidators;
+using Microsoft.EntityFrameworkCore;
 
 namespace ParrotWingsAPI.Controllers
 {
@@ -22,27 +24,27 @@ namespace ParrotWingsAPI.Controllers
     public class UsersController : ControllerBase
     {
         private readonly ApiContext _context;
-        private readonly IConfiguration _configuration;
         private readonly AccessTokenGenerator _accessTokenGenerator;
         private readonly RefreshTokenGenerator _refreshTokenGenerator;
+        private readonly RefreshTokenValidator _refreshTokenValidator;
         private readonly PasswordServices _passwordServices;
         private readonly decimal PWRegisterRewardAmnt = 500;
-
+        
         public UsersController(ApiContext context,
-                               IConfiguration configuration,
                                PasswordServices passwordServices,
                                AccessTokenGenerator accessTokenGenerator,
-                               RefreshTokenGenerator refreshTokenGenerator)
+                               RefreshTokenGenerator refreshTokenGenerator,
+                               RefreshTokenValidator refreshTokenValidator)
         {
             _context= context;
-            _configuration= configuration;
             _passwordServices = passwordServices;
             _accessTokenGenerator = accessTokenGenerator;
             _refreshTokenGenerator= refreshTokenGenerator;
+            _refreshTokenValidator = refreshTokenValidator;
         }
 
         [HttpPost, AllowAnonymous]
-        public async Task<JsonResult> Registration(PWUsersRegisteration userInput)
+        public async Task<JsonResult> Registration(UsersRegisteration userInput)
         {
             var userInDb = await _context.UserAccs.FindAsync(userInput.Email.ToLower());
 
@@ -67,39 +69,80 @@ namespace ParrotWingsAPI.Controllers
         }
 
         [HttpPost, AllowAnonymous]
-        public async Task<JsonResult> Login(PWUsersLogin userInput)
+        public async Task<JsonResult> Login(UsersLogin userInput)
         {
             var userInDb = await _context.UserAccs.FindAsync(userInput.Email.ToLower());
-
+            
             if (userInDb == null)
                 return new JsonResult(BadRequest("Error: user not found"));
 
             if (!_passwordServices.VerifyPasswordHash(userInput.Password, userInDb.PasswordHash, userInDb.PasswordSalt))
                 return new JsonResult(BadRequest("Error: wrong password"));
 
-            string newAccessToken = _accessTokenGenerator.GenerateToken(userInDb);
-            string newRefreshToken = _refreshTokenGenerator.GenerateToken();
+            var RefreshToken = await _context.UserTokens.FindAsync(userInput.Email.ToLower());
 
-            userInDb.IsLoggedIn = true;
-            await _context.SaveChangesAsync();
+            if (RefreshToken != null)
+                return new JsonResult(BadRequest("Error: logout first"));
 
-            return new JsonResult(Ok(new AuthenticatedUserResponse()
-            {
-                AccessToken= newAccessToken,
-                RefreshToken= newRefreshToken
-            }));
+            AuthenticatedUserResponse response = await Authenticate(userInDb);
+
+            return new JsonResult(Ok(response));
         }
 
-        [HttpPost]
+        [HttpPost, AllowAnonymous]
+        public async Task<JsonResult> Refresh([FromBody] RefreshRequest refreshRequest)
+        {
+            if (!ModelState.IsValid)
+                return new JsonResult(BadRequest("Error: error during refresh token pending"));
+
+            bool isValidRefreshToken = _refreshTokenValidator.Validate(refreshRequest.RefreshToken);
+
+            if (!isValidRefreshToken)
+                return new JsonResult(BadRequest("Error: invalid refresh token"));
+
+            var refreshToken = await _context.UserTokens.FirstOrDefaultAsync(r => r.Token == refreshRequest.RefreshToken);
+
+            if (refreshToken == null)
+                return new JsonResult(NotFound("Error: Invalid refresh token"));
+
+            var oldTokenRecords = _context.UserTokens.Where(o => o.Email == refreshToken.Email);
+            if (oldTokenRecords.Count() > 0)
+            {
+                foreach (PWRefreshTokens record in oldTokenRecords)
+                {
+                    _context.UserTokens.Remove(record);
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            var userInDb = await _context.UserAccs.FirstOrDefaultAsync(u => u.Email == refreshToken.Email);
+
+            if (userInDb == null)
+                return new JsonResult(NotFound("Error: User not found"));
+
+            AuthenticatedUserResponse response = await Authenticate(userInDb);
+
+            return new JsonResult(Ok(response));
+        }
+
+        [HttpDelete]
         public async Task<JsonResult> Logout()
         {
-            var userInDb = await getCurrentUserFromDB();
+            string userEmail = HttpContext.User.FindFirstValue(ClaimTypes.Email);
+            var oldTokenRecords = _context.UserTokens.Where(o => o.Email == userEmail);
+            if (oldTokenRecords == null)
+            {
+                return new JsonResult(Unauthorized("Error: login first"));
+            }
 
-            if (userInDb.IsLoggedIn == false)
-                return new JsonResult(BadRequest("Error: already logged out"));
-
-            userInDb.IsLoggedIn = false;
-            await _context.SaveChangesAsync();
+            if (oldTokenRecords.Count() > 0)
+            {
+                foreach (PWRefreshTokens record in oldTokenRecords)
+                {
+                    _context.UserTokens.Remove(record);
+                }
+                await _context.SaveChangesAsync();
+            }
 
             return new JsonResult(Ok("Success: logged out"));
         }
@@ -110,10 +153,8 @@ namespace ParrotWingsAPI.Controllers
             var userInDb = await getCurrentUserFromDB();
 
             if (userInDb == null)
-                return new JsonResult(NotFound("Error: internal server error. User data not found"));
+                return new JsonResult(NotFound("Error: User data not found"));
 
-            if (userInDb.IsLoggedIn == false)
-                return new JsonResult(Unauthorized("Error: login required"));
 
             return new JsonResult(Ok(userInDb.Name));
         }
@@ -124,10 +165,7 @@ namespace ParrotWingsAPI.Controllers
             var userInDb = await getCurrentUserFromDB();
 
             if (userInDb == null)
-                return new JsonResult(NotFound("Error: internal server error. User data not found"));
-
-            if (userInDb.IsLoggedIn == false)
-                return new JsonResult(Unauthorized("Error: login required"));
+                return new JsonResult(NotFound("Error: User data not found"));
 
             return new JsonResult(Ok(userInDb.Balance));
         }
@@ -137,6 +175,26 @@ namespace ParrotWingsAPI.Controllers
             var userIdentity = User.FindFirstValue(ClaimTypes.Email);
             var userInDb = await _context.UserAccs.FindAsync(userIdentity);
             return userInDb;
+        }
+
+        private async Task<AuthenticatedUserResponse> Authenticate(PWUsers user)
+        {
+            string newAccessToken = _accessTokenGenerator.GenerateToken(user);
+            string newRefreshToken = _refreshTokenGenerator.GenerateToken();
+
+            PWRefreshTokens refreshToken = new PWRefreshTokens()
+            {
+                Token = newRefreshToken,
+                Email = user.Email
+            };
+            await _context.UserTokens.AddAsync(refreshToken);
+            await _context.SaveChangesAsync();
+
+            return new AuthenticatedUserResponse()
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken
+            };
         }
     }
 }

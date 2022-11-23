@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ParrotWingsAPI.Models.Requests
 {
-    public class PWTransactions
+    public class Transactions
     {
         [Required(ErrorMessage = "Recipient name is required")]
         public string RecipientName { get; set; }

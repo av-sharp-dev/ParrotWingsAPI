@@ -2,7 +2,7 @@
 
 namespace ParrotWingsAPI.Models.Requests
 {
-    public class PWUsersLogin
+    public class UsersLogin
     {
         [EmailAddress]
         [Required(ErrorMessage = "Email is required")]

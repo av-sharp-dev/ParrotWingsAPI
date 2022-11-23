@@ -6,6 +6,7 @@ using ParrotWingsAPI.Data;
 using ParrotWingsAPI.Models;
 using ParrotWingsAPI.Services.PasswordServices;
 using ParrotWingsAPI.Services.TokenGenerators;
+using ParrotWingsAPI.Services.TokenValidators;
 using Swashbuckle.AspNetCore.Filters;
 using System.Text;
 
@@ -15,8 +16,9 @@ string CORSpolicy = "CORSpolicy";
 // Add services to the container.
 builder.Services.AddSingleton<AccessTokenGenerator>();
 builder.Services.AddSingleton<RefreshTokenGenerator>();
-builder.Services.AddSingleton<TokenGenerator>();
+builder.Services.AddSingleton<RefreshTokenValidator>();
 builder.Services.AddSingleton<PasswordServices>();
+builder.Services.AddSingleton<TokenGenerator>();
 
 builder.Services.AddDbContext<ApiContext>
     (opt => opt.UseInMemoryDatabase("ParrotWingsDb"));

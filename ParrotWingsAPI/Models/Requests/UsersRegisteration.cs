@@ -2,7 +2,7 @@
 
 namespace ParrotWingsAPI.Models.Requests
 {
-    public class PWUsersRegisteration
+    public class UsersRegisteration
     {
         [Key]
         [EmailAddress]

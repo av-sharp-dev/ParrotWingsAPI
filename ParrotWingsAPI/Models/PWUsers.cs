@@ -10,6 +10,5 @@ namespace ParrotWingsAPI.Models
         public byte[] PasswordHash { get; set; }
         public byte[] PasswordSalt { get; set; }
         public decimal Balance { get; set; } = 0;
-        public bool IsLoggedIn { get; set; } = false;
     }
 }
