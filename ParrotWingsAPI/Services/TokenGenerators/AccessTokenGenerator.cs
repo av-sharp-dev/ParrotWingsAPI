@@ -9,11 +9,12 @@ namespace ParrotWingsAPI.Services.TokenGenerators
     public class AccessTokenGenerator
     {
         private readonly IConfiguration _configuration;
-        //private readonly TokenGenerator _tokenGenerator;
+        private readonly TokenGenerator _tokenGenerator;
 
-        public AccessTokenGenerator(IConfiguration configuration)
+        public AccessTokenGenerator(IConfiguration configuration, TokenGenerator tokenGenerator)
         {
             _configuration = configuration;
+            _tokenGenerator = tokenGenerator;
         }
 
         public string GenerateToken(PWUsers user)
@@ -23,15 +24,21 @@ namespace ParrotWingsAPI.Services.TokenGenerators
                 new Claim(ClaimTypes.Email, user.Email)
             };
 
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:AccessTokenSecret").Value));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-            var expiration = Convert.ToDouble(_configuration.GetSection("AppSettings:AccessTokenExpirationMinutes").Value);
-            var token = new JwtSecurityToken(
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(expiration),
-                signingCredentials: creds);
+            //var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:AccessTokenSecret").Value));
+            //var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+            //var expiration = Convert.ToDouble(_configuration.GetSection("AppSettings:AccessTokenExpirationMinutes").Value);
+            //var token = new JwtSecurityToken(
+            //    claims: claims,
+            //    expires: DateTime.UtcNow.AddMinutes(expiration),
+            //    signingCredentials: creds);
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            //return new JwtSecurityTokenHandler().WriteToken(token);
+
+            return _tokenGenerator.GenerateToken(
+                _configuration.GetSection("AppSettings:AccessTokenSecret").Value,
+                Convert.ToInt16(_configuration.GetSection("AppSettings:AccessTokenExpirationMinutes").Value),
+                claims
+                );
         }
     }
 }

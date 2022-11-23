@@ -7,8 +7,7 @@ namespace ParrotWingsAPI.Services.TokenGenerators
 {
     public class TokenGenerator
     {
-        public string GenerateToken(string secretKey, int expirationMinutes,
-            IEnumerable<Claim> claims = null)
+        public string GenerateToken(string secretKey, int expirationMinutes, IEnumerable<Claim> claims = null)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
 

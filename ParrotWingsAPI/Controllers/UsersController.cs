@@ -24,15 +24,21 @@ namespace ParrotWingsAPI.Controllers
         private readonly ApiContext _context;
         private readonly IConfiguration _configuration;
         private readonly AccessTokenGenerator _accessTokenGenerator;
+        private readonly RefreshTokenGenerator _refreshTokenGenerator;
         private readonly PasswordServices _passwordServices;
         private readonly decimal PWRegisterRewardAmnt = 500;
 
-        public UsersController(ApiContext context, IConfiguration configuration, AccessTokenGenerator accessTokenGenerator, PasswordServices passwordServices)
+        public UsersController(ApiContext context,
+                               IConfiguration configuration,
+                               PasswordServices passwordServices,
+                               AccessTokenGenerator accessTokenGenerator,
+                               RefreshTokenGenerator refreshTokenGenerator)
         {
             _context= context;
             _configuration= configuration;
-            _accessTokenGenerator= accessTokenGenerator;
             _passwordServices = passwordServices;
+            _accessTokenGenerator = accessTokenGenerator;
+            _refreshTokenGenerator= refreshTokenGenerator;
         }
 
         [HttpPost, AllowAnonymous]
@@ -71,14 +77,16 @@ namespace ParrotWingsAPI.Controllers
             if (!_passwordServices.VerifyPasswordHash(userInput.Password, userInDb.PasswordHash, userInDb.PasswordSalt))
                 return new JsonResult(BadRequest("Error: wrong password"));
 
+            string newAccessToken = _accessTokenGenerator.GenerateToken(userInDb);
+            string newRefreshToken = _refreshTokenGenerator.GenerateToken();
 
-            string token = _accessTokenGenerator.GenerateToken(userInDb);
             userInDb.IsLoggedIn = true;
             await _context.SaveChangesAsync();
 
             return new JsonResult(Ok(new AuthenticatedUserResponse()
             {
-                AccessToken= token
+                AccessToken= newAccessToken,
+                RefreshToken= newRefreshToken
             }));
         }
 

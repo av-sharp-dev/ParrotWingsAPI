@@ -14,7 +14,10 @@ string CORSpolicy = "CORSpolicy";
 
 // Add services to the container.
 builder.Services.AddSingleton<AccessTokenGenerator>();
+builder.Services.AddSingleton<RefreshTokenGenerator>();
+builder.Services.AddSingleton<TokenGenerator>();
 builder.Services.AddSingleton<PasswordServices>();
+
 builder.Services.AddDbContext<ApiContext>
     (opt => opt.UseInMemoryDatabase("ParrotWingsDb"));
 builder.Services.AddMvc();
